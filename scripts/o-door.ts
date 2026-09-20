@@ -1,0 +1,31 @@
+const dvere = [
+  0x6A5,
+  0x6A6,
+  0x6A7,
+  0x6A8,
+  0x675,
+  0x676,
+  0x677,
+  0x678,
+  0x6ED,
+  0x6EE,
+  0x6EF,
+  0x6F0,
+  0x67D,
+  0x67E,
+  0x67F,
+  0x681,
+  0x824,
+  0x825,
+  0x827,
+  0x826,
+];
+
+dvere.forEach(dvereT => { 
+  const dvereItem = client.findType(dvereT, null, "world", null, 1);
+  if (dvereItem) {
+    player.use(dvereItem.serial);
+    exit();
+  }
+});
+client.headMsg(`Nejsou zde dveře`, player.serial, 0x25);
