@@ -1,4 +1,5 @@
-// if missing add graphicx
+// one key for both, mounth an unmount
+// if missing add graphic
 const mounts = [
   0xCC,
   0xE2,
