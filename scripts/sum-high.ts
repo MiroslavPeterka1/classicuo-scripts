@@ -1,4 +1,3 @@
-// fill combinations of char + name and script will select higher sum for your char (necro 115% -> wortex, 100% -> skeleton)
 type Char = "necro" | "mag" | "rang" | "monk" | "bishop";
 
 const charDefs: { char: Char, name: string }[] = [
@@ -19,30 +18,30 @@ switch (char.char) {
       const skillHigh = player.getSkill(Skills.Necromancy).value >= 1150;
       if (skillHigh) { 
         data.horizontalMenuSelect(0x20ED);
-        exit();
+      } else {
+        data.horizontalMenuSelect(0x20E7);
       }
-      data.horizontalMenuSelect(0x20E7);
-      exit();
+      break;
     }
   case "mag":
     { 
       const skillHigh = player.getSkill(Skills.Magery).value >= 1150;
-      if (skillHigh) { 
+      if (skillHigh) {
         data.horizontalMenuSelect(0x20D6);
-        exit();
+      } else { 
+        data.horizontalMenuSelect(0x20FE);
       }
-      data.horizontalMenuSelect(0x20FE);
-      exit();
+      break;
     }
   case "rang":
     { 
       data.horizontalMenuSelect(0x211E);
-      exit();
+      break;
     }
   case "bishop":
     { 
       data.horizontalMenuSelect(0x20A2);
-      exit();
+      break;
     }
   default:
     client.sysMsg("V konfiguraci nenalezena kombinace jméno hráče a char");
