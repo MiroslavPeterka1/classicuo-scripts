@@ -1,3 +1,5 @@
+// Obecné pití, pro ostatní eleixíry stačí vyměnit graph a hue(barva)
+
 const name = "GS";
 const graph = 0x1843;
 const hue = 0x481;
