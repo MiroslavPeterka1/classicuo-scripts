@@ -1,4 +1,5 @@
-target.cancel();
+//lockování truhel na mapky, spustíš a vybereš truhlu
+
 const truhla = target.query();
 const truhlaItem = client.findObject(truhla.serial);
 journal.clear();
