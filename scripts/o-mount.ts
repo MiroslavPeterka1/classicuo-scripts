@@ -1,8 +1,10 @@
-// one key for both, mounth an unmount
-// if missing add graphic
+// na jednu klávesu nasedne/sesdne - pokud nefrčí, je třeba graphic přidat do pole
+
 const mounts = [
   0xCC,
   0xE2,
+  0xE4,
+  0xDB,
 ];
 
 if (player.equippedItems.mount) {
