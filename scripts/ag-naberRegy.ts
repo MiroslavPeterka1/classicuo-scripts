@@ -1,4 +1,5 @@
-// For necromance you want necro regs as well so add names of your necromancers into necrJmeno array
+// script nabere regy, pokud do pole necrJmeno vyplníš postavu, tak kromě základních nabere i necro regy
+
 const rNum = 1000;
 const regyTypes = [
   0xF7A, //black perls 
@@ -30,6 +31,8 @@ const nRegyTypes = [
   0xF8F, //volcanic ash
   0xF89, //obsidian
   0xF91, //wyrms hard
+  0xF8E, //serpent scales
+  0xF81, //fertaile dirt
   0xF87, //EoN
 ];
 
