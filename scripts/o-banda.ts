@@ -1,3 +1,4 @@
+// banda jedna na sebe - bacha na nastavení interního limitu mezi spouštění scriptů ... může hodně prodloužit možnost znovuspuštění (nastavení UO)
 const bandy = client.findType(0xE21, 0x0, player.backpack);
 if (!bandy) {
   client.headMsg("Došli bandy", player.serial,0x63);
