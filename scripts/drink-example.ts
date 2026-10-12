@@ -1,6 +1,9 @@
+// Obecné pití, pro ostatní eleixíry stačí vyměnit graph a hue(barva)
+
 const name = "GS";
 const graph = 0xF09;
 const hue = 0x0;
+
 const lektvar = client.findType(graph, hue, player.backpack);
 if (!lektvar) { 
   client.headMsg(`Došli ${name}`, player.serial, 0x25);
