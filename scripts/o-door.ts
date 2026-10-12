@@ -1,3 +1,5 @@
+//na jedné klávese otevírání a zavírání dveří, pokud nějaké nejdou, tak v poli dveře chyby graphic, bacha každé křídko má jinou grafiku a rozdílná je i u otevřených a zavřených
+
 const dvere = [
   0x6A5,
   0x6A6,
