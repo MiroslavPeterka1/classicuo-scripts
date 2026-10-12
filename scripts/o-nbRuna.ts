@@ -1,3 +1,5 @@
+// po spuštění by se měl spustit teleport. Bacha blbne menu. Zdá se, že každá postava ma menu pod jiným serialem (v budoucnu vyřeším nějakým polem, nyní mě to nějak netíži - nehraju PVP)
+
 const nbRuna = client.findType(0x1F14, 0xB1D, player.backpack);
 if (!nbRuna) exit("NB runa nenalezena");
 player.use(nbRuna.serial);
