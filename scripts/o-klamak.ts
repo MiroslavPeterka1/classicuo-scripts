@@ -1,3 +1,5 @@
+// prostě vyhodí klamáka dle pořadí v poli
+
 const klamaci = [
   0x20cf, // Bear
   0x20d0, // Giant Rat
