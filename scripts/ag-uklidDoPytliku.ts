@@ -1,3 +1,5 @@
+// spustítš, vyskočí target, označíš kam přesunout. Script všechny regy a peníze hodí do pytliku
+
 const lootTypes = [
   0xF7A, //black perls 
   0xF84, //garlics
@@ -21,7 +23,10 @@ const lootTypes = [
   0xF8F, //volcanic ash
   0xF89, //obsidian
   0xF91, //wyrms hard
+  0xF8E, //serpent scales
+  0xF81, //fertaile dirt
   0xF87, //EoN
+  0xF8B, //pumice
 ];
 
 const bp = player.backpack;
