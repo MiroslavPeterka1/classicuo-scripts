@@ -1,4 +1,4 @@
-// same script for blody bandages for wamp. Just add name of your wamp into array.
+// do pole wamp jmena napiš jména wampu, script pak pozná jestli papat salátek nebo bandy
 const wampJmena = [
   "Pepik"
 ];
