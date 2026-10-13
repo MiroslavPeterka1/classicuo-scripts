@@ -23,29 +23,29 @@ const NB_GUMP          = 0x80A00435;
 const NB_HOME_BUTTON   = 1;
 
 // Domov: místo, odkud se script spouští a odkud jde otevřít truhla.
-const HOME_START = { x: 313, y: 3372 };
+const HOME_START = { x: 1313, y: 2372 };
 
 // Důl: body, mezi kterými se postava pohybuje (v tomto pořadí).
 // Mezi dvěma po sobě jdoucími body musí jít dojít rovně (i šikmo).
 // Na každém bodě vykope čtverec MINE_RANGE polí na každou stranu.
 const MINE_WAYPOINTS = [
-    { x: 1382, y: 2710 },
-    { x: 1370, y: 2710 },
-    { x: 1371, y: 2717 },
-    { x: 1366, y: 2725 },
+    { x: 382, y: 1710 },
+    { x: 370, y: 1710 },
+    { x: 371, y: 1717 },
+    { x: 366, y: 1725 },
 ];
 // Linie konce dolu (zeď): tato pole se nekopou a postava na ně nevstoupí.
 // Kdyby na ni přesto vstoupila, kopání končí (bod 10).
 const MINE_END_LINE = [
-    { x: 1366, y: 2730 },
-    { x: 1367, y: 2730 },
-    { x: 1368, y: 2730 },
+    { x: 2366, y: 1730 },
+    { x: 2367, y: 1730 },
+    { x: 2368, y: 1730 },
 ];
 const MINE_RANGE = 6;
 
 // Pec: kam si stoupnout. Postava k ní dojde po bodech dolu až k bodu,
 // který je peci nejblíž, a odtud rovně na FORGE_STAND.
-const FORGE_STAND   = { x: 1379, y: 2706 };
+const FORGE_STAND   = { x: 2379, y: 2306 };
 const FORGE_GRAPHIC = 0x0FB1;
 
 // Kopání
