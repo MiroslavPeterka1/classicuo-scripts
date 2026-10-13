@@ -1,6 +1,6 @@
 // ============================================================================
 //  Automatický mining – ClassicUO Web
-//  Domov (secure truhla) -> runa do dolu -> kopání -> pec -> travel book domů
+//  Domov (secure truhla) -> runa do dolu -> kopání po bodech -> pec -> NB runa domů
 // ============================================================================
 
 // ------------------------------- KONFIGURACE --------------------------------
@@ -9,39 +9,21 @@
 const SECURE_CHEST = 0x400AE883; // serial secure truhly u domu
 const PICKAXE_BAG  = 0x40030A02; // pytlík s krumpáči (v truhle)
 const PRODUCT_BAG  = 0x403FAA6D; // pytlík na ingoty a kameny (v truhle)
-const MINE_RUNE    = 0x401D9871; // runa do dolu (v truhle)
+const MINE_RUNE    = 0x4007277D; // runa do dolu (v truhle)
 
-// Svitky pro travel book (leží volně v truhle)
-const SCROLL_GRAPHIC  = 0x1F4C;
-const SCROLL_HUE      = 0x0;
-const SCROLLS_TO_TAKE = 1; // kolik svitků mít v batohu při odchodu do dolu
-
-// Travel book (nosí se v batohu, hledá se podle graphic + hue)
-const TRAVEL_BOOK_GRAPHIC = 0xFEF;
-const TRAVEL_BOOK_HUE     = 0x482;
+// NB runa pro návrat domů (nosí se v batohu, hledá se podle graphic + hue)
+const NB_RUNE_GRAPHIC = 0x1F14;
+const NB_RUNE_HUE     = 0x0B1D;
 
 // Gumpy
 const RUNE_GUMP            = 0x2B1;
 const RUNE_RECALL_SWITCH   = 0x0;
 const RUNE_CONTINUE_BUTTON = 1;
-const BOOK_GUMP             = 0x80A0044A;
-const BOOK_OWN_PLACE_BUTTON = 4;
-const BOOK_CONFIRM_GUMP     = 0x80A0043B;
-const BOOK_CONFIRM_BUTTON   = 1;
+const NB_GUMP          = 0x80A00435;
+const NB_HOME_BUTTON   = 1;
 
 // Domov: místo, odkud se script spouští a odkud jde otevřít truhla.
-// Pole o 1 na jih (y + 1) je mimo home zónu = cíl "Vlastní místo" v travel booku.
 const HOME_START = { x: 313, y: 3372 };
-
-// Důl
-const FORGE_STAND   = { x: 9999, y: 9999 };  // kam si stoupnout k peci
-const FORGE_GRAPHIC = 0x0FB1;
-const MINE_END_LINE = [                // pole na linii konce dolu (zeď)
-    { x: 1111, y: 2222 },
-    { x: 1112, y: 2222 },
-    { x: 1113, y: 2222 },
-    { x: 1114, y: 2222 },
-];
 
 // Důl: body, mezi kterými se postava pohybuje (v tomto pořadí).
 // Mezi dvěma po sobě jdoucími body musí jít dojít rovně (i šikmo).
@@ -51,16 +33,25 @@ const MINE_WAYPOINTS = [
     { x: 1370, y: 2710 },
     { x: 1371, y: 2717 },
     { x: 1366, y: 2725 },
-]; 
+];
+// Linie konce dolu (zeď): tato pole se nekopou a postava na ně nevstoupí.
+// Kdyby na ni přesto vstoupila, kopání končí (bod 10).
+const MINE_END_LINE = [
+    { x: 1366, y: 2730 },
+    { x: 1367, y: 2730 },
+    { x: 1368, y: 2730 },
+];
+const MINE_RANGE = 6;
 
-const MINE_RANGE  = 6;                 // dosah kopání
-const MAX_EXPLORE = 100;               // pojistka: max. vzdálenost od místa příletu do dolu
- 
+// Pec: kam si stoupnout. Postava k ní dojde po bodech dolu až k bodu,
+// který je peci nejblíž, a odtud rovně na FORGE_STAND.
+const FORGE_STAND   = { x: 1379, y: 2706 };
+const FORGE_GRAPHIC = 0x0FB1;
+
 // Kopání
 const PICKAXE_GRAPHIC  = 0x0E85;
 const PICKAXES_WANTED  = 15;
-
-// Hlášky, že úder skončil (ruda získaná nebo nezískaná). Hledá se část textu,
+// Hlášky, že úder skončil (ruda získaná nebo nezískaná)
 const END_ACTION_TEXTS = [
     'You put the iron ore in your pack.',
     'You put the copper ore in your pack.',
@@ -82,76 +73,78 @@ const END_ACTION_TEXTS = [
     'You put the star diamond ore in your pack.',
     'You loosen some rocks but fail to find any usable ore.',
 ];
-
+// Hlášky, že na poli nic není / nejde kopat -> další pole
 const TILE_EMPTY_TEXTS = [
     'There is no ore here to mine.',
     'Try mining in rock.',
     'There is nothing here to mine for.',
-    "Try mining elsewhere.",
-    "You have no line of sight to that location"
+    'Try mining elsewhere.',
+    'You have no line of sight to that location',
 ];
 // Hlášky, kdy pole nejde kopat (moc daleko, není vidět...). DOPLNIT podle shardu.
 const TILE_FAIL_TEXTS: string[] = ['That is too far away.', 'Target cannot be seen.'];
 const STRIKE_TIMEOUT       = 8000;
 const MAX_STRIKES_PER_TILE = 40;
- 
+
 // Váha a bezpečnost
 const WEIGHT_RESERVE      = 20;  // "plný batoh" = weightMax - rezerva
 const HOME_WEIGHT_RATIO   = 0.8; // po tavení nad tímto podílem -> domů
 const WEIGHT_MAX_FALLBACK = 500; // když klient weightMax nezná
 const HP_FLEE_RATIO       = 0.6; // pod tímto podílem HP -> útěk
- 
+
 // Útěk při objevení kohokoli v dole
 const FLEE_ON_MOBILE    = true;
 const FLEE_MOBILE_TYPE  = 'human'; // 'human' = jen lidské postavy, 'any' = i monstra a zvířata
 const FLEE_MOBILE_RANGE = 18;      // vzdálenost v polích (18 ≈ celá obrazovka)
 const FLEE_IGNORE: number[] = [];  // serialy, kvůli kterým neutíkat (vlastní pet, kamarád...)
- 
+
 // Rudy a produkty tavení
 const ORE_GRAPHICS     = [0x19B7, 0x19B8, 0x19B9, 0x19BA];
 const PRODUCT_GRAPHICS = [
     0x1BEF, 0x1BE3, 0x1BF5, 0x1BE9,                 // ingoty (všechny hue)
     0x0F0F, 0x0F10, 0x0F26, 0x0F16, 0x0F15, 0x0F13, // kameny
 ];
- 
+
 // Časování
 const MOVE_DELAY       = 700;
 const SMELT_DELAY      = 1200;
 const TELEPORT_TIMEOUT = 60000;
- 
+
 // --------------------------------- STAV -------------------------------------
- 
+
 type P = { x: number; y: number };
- 
+
 const HOME_MARK: P = { x: HOME_START.x, y: HOME_START.y + 1 };
 const K = (x: number, y: number) => x + ',' + y;
 const WP: P[] = MINE_WAYPOINTS;
- 
+
 const AT_ARRIVAL = -1; // stojí na místě příletu runy
 const AT_FORGE   = -2; // stojí u pece
- 
+
 const done = new Set<string>(); // vytěžená pole (přežije i cestu domů)
+const lineSet = new Set<string>(MINE_END_LINE.map(p => K(p.x, p.y)));
+const onLine = () => lineSet.has(K(player.x, player.y));
 let curWp = AT_ARRIVAL;         // na kterém bodě postava stojí
 let resumeWp = 0;               // na kterém bodě se naposledy kopalo
 let arrival: P | null = null;
- 
+
 // index bodu, který je nejblíž peci
 const FORGE_WP = WP.reduce((best, p, i) =>
     dist(p, FORGE_STAND) < dist(WP[best], FORGE_STAND) ? i : best, 0);
- 
+
 // směry 0..7: N, NE, E, SE, S, SW, W, NW
 const DIR8: { [k: string]: number } = {
     '0,-1': 0, '1,-1': 1, '1,0': 2, '1,1': 3,
     '0,1': 4, '-1,1': 5, '-1,0': 6, '-1,-1': 7,
 };
- 
+
 // -------------------------------- POMOCNÉ -----------------------------------
- 
+
 function pos(): P { return { x: player.x, y: player.y }; }
 function at(p: P) { return player.x === p.x && player.y === p.y; }
 function dist(a: P, b: P) { return Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y)); }
 function maxW() { return player.weightMax > 0 ? player.weightMax : WEIGHT_MAX_FALLBACK; }
- 
+
 function alarm(text: string, hue = 33) {
     client.headMsg(text, player, hue);
     client.sysMsg(text, hue);
@@ -173,12 +166,12 @@ function alarm(text: string, hue = 33) {
         }
     } catch (e) { /* zvuk není k dispozici */ }
 }
- 
+
 function stop(text: string, hue = 33) {
     alarm(text, hue);
     exit();
 }
- 
+
 function waitUntil(cond: () => boolean, timeout: number, tick: (() => void) | null, interval: number) {
     const t0 = Date.now();
     while (Date.now() - t0 < timeout) {
@@ -188,25 +181,25 @@ function waitUntil(cond: () => boolean, timeout: number, tick: (() => void) | nu
     }
     return cond();
 }
- 
+
 function items(graphic: number, hue: number | undefined, container: any): any[] {
     return client.findAllItemsOfType(graphic, hue, container) || [];
 }
- 
+
 function countItems(graphic: number, hue: number | undefined, container: any) {
     return items(graphic, hue, container).reduce((s, i) => s + (i.amount || 1), 0);
 }
- 
+
 function countPickaxes() { return items(PICKAXE_GRAPHIC, undefined, player.backpack).length; }
 function hasOre() { return ORE_GRAPHICS.some(g => items(g, undefined, player.backpack).length > 0); }
- 
+
 function openContainer(serial: number) {
     player.use(serial);
     sleep(800);
 }
- 
+
 let fleeReason = '';
- 
+
 function nearbyStranger(): any {
     if (!FLEE_ON_MOBILE) return null;
     const m = client.selectEntity(
@@ -218,7 +211,7 @@ function nearbyStranger(): any {
     if (dist({ x: m.x, y: m.y }, pos()) > FLEE_MOBILE_RANGE) return null;
     return m;
 }
- 
+
 function checkSafety() {
     if (player.isDead) stop('Postava je mrtvá!');
     const mh = player.maxHits;
@@ -232,9 +225,9 @@ function checkSafety() {
         throw 'FLEE';
     }
 }
- 
+
 // -------------------------------- POHYB -------------------------------------
- 
+
 function tryStep(dx: number, dy: number): boolean {
     const dir = DIR8[dx + ',' + dy];
     const sx = player.x, sy = player.y;
@@ -250,7 +243,7 @@ function tryStep(dx: number, dy: number): boolean {
     }
     return player.x === sx + dx && player.y === sy + dy;
 }
- 
+
 // Jeden krok směrem k cíli; když je přímý směr blokovaný, zkusí obejít bokem.
 function stepToward(t: P): boolean {
     const dx = Math.sign(t.x - player.x), dy = Math.sign(t.y - player.y);
@@ -258,9 +251,11 @@ function stepToward(t: P): boolean {
     if (dx && dy) opts.push([dx, 0], [0, dy]);
     else if (dx) opts.push([dx, -1], [dx, 1]);
     else opts.push([-1, dy], [1, dy]);
-    return opts.some(([ox, oy]) => tryStep(ox, oy));
+    return opts
+        .filter(([ox, oy]) => !lineSet.has(K(player.x + ox, player.y + oy)))
+        .some(([ox, oy]) => tryStep(ox, oy));
 }
- 
+
 function walkTo(t: P, safety = true): boolean {
     if (player.weight > maxW()) alarm('Jsem přetížený, nemůžu chodit!');
     let fails = 0;
@@ -275,7 +270,7 @@ function walkTo(t: P, safety = true): boolean {
     }
     return at(t);
 }
- 
+
 // Chůze po bodech dolu z curWp na bod `to`
 function goToWp(to: number): boolean {
     if (curWp === AT_ARRIVAL) {
@@ -293,11 +288,11 @@ function goToWp(to: number): boolean {
     }
     return true;
 }
- 
+
 // -------------------------------- KOPÁNÍ ------------------------------------
- 
+
 function tooHeavy() { return player.weight >= maxW() - WEIGHT_RESERVE; }
- 
+
 function strikeTile(x: number, y: number): string {
     journal.clear();
     if (!player.useType(PICKAXE_GRAPHIC, undefined, player.backpack)) return 'nopick';
@@ -310,7 +305,7 @@ function strikeTile(x: number, y: number): string {
     if ([...TILE_EMPTY_TEXTS, ...TILE_FAIL_TEXTS].some(t => journal.containsText(t))) return 'empty';
     return 'ok';
 }
- 
+
 function mineTile(x: number, y: number) {
     for (let i = 0; i < MAX_STRIKES_PER_TILE; i++) {
         checkSafety();
@@ -322,7 +317,7 @@ function mineTile(x: number, y: number) {
     }
     done.add(K(x, y));
 }
- 
+
 // Pořadí polí čtverce kolem bodu (od středu ven) – vždy stejné, takže jde navázat
 function squareTiles(c: P): P[] {
     const tiles: any[] = [];
@@ -334,24 +329,28 @@ function squareTiles(c: P): P[] {
     tiles.sort((a, b) => a.d - b.d || a.y - b.y || a.x - b.x);
     return tiles;
 }
- 
+
 // Vykope čtverec kolem bodu č. i; už vytěžená pole přeskočí,
 // takže po návratu od pece / z domu pokračuje tam, kde skončil.
 function mineSquare(i: number) {
     const tiles = squareTiles(WP[i]);
-    const left = tiles.filter(t => !done.has(K(t.x, t.y)));
+    const left = tiles.filter(t => !done.has(K(t.x, t.y)) && !lineSet.has(K(t.x, t.y)));
     if (left.length < tiles.length && left.length > 0) {
         log(`Bod ${i + 1}/${WP.length}: pokračuji, zbývá ${left.length} z ${tiles.length} polí.`);
     }
     for (const t of left) mineTile(t.x, t.y);
 }
- 
+
 // Vrací 'HEAVY' | 'NOPICK' | 'END' | 'FLEE'
 function miningSession(): string {
     try {
         for (let i = resumeWp; i < WP.length; i++) {
             resumeWp = i;
-            if (!goToWp(i)) stop(`Nedošel jsem na bod dolu č. ${i} (${WP[i].x}, ${WP[i].y})!`);
+            if (!goToWp(i)) {
+                if (onLine()) return 'END';
+                stop(`Nedošel jsem na bod dolu č. ${i} (${WP[i].x}, ${WP[i].y})!`);
+            }
+            if (onLine()) return 'END';
             mineSquare(i);
         }
         return 'END';
@@ -360,9 +359,9 @@ function miningSession(): string {
         throw e;
     }
 }
- 
+
 // -------------------------------- TAVENÍ ------------------------------------
- 
+
 function smeltAll() {
     const forge = client.findType(FORGE_GRAPHIC, undefined, 'world', undefined, 3);
     if (!forge) stop('Pec nenalezena poblíž!');
@@ -386,7 +385,7 @@ function smeltAll() {
     ignoreList.clear();
     if (hasOre()) alarm('Část rudy se nepodařilo přetavit.', 0x35);
 }
- 
+
 // Dojde k peci a přetaví všechnu rudu. Vrací 'OK' | 'FLEE'
 function smeltTrip(): string {
     try {
@@ -403,9 +402,9 @@ function smeltTrip(): string {
         throw e;
     }
 }
- 
+
 // ------------------------------ TELEPORTY -----------------------------------
- 
+
 function useRune(): boolean {
     player.use(MINE_RUNE);
     const g = Gump.findOrWait(RUNE_GUMP, 3000);
@@ -414,32 +413,30 @@ function useRune(): boolean {
     g.reply(RUNE_CONTINUE_BUTTON);
     return true;
 }
- 
-function useTravelBook(): boolean {
-    const book = client.findType(TRAVEL_BOOK_GRAPHIC, TRAVEL_BOOK_HUE, player.backpack);
-    if (!book) { alarm('Travel book není v batohu!'); return false; }
-    player.use(book);
-    const g = Gump.findOrWait(BOOK_GUMP, 3000);
+
+function useNbRune(): boolean {
+    const rune = client.findType(NB_RUNE_GRAPHIC, NB_RUNE_HUE, player.backpack);
+    if (!rune) { alarm('NB runa není v batohu!'); return false; }
+    player.use(rune.serial);
+    const g = Gump.findOrWait(NB_GUMP, 3000);
     if (!g) return false;
-    g.reply(BOOK_OWN_PLACE_BUTTON);
-    const g2 = Gump.findOrWait(BOOK_CONFIRM_GUMP, 3000);
-    if (!g2) return false;
-    g2.reply(BOOK_CONFIRM_BUTTON);
+    client.headMsg('Port domů teď!', player.serial, 0x63);
+    g.reply(NB_HOME_BUTTON);
     return true;
 }
- 
+
 function departToMine() {
     for (let a = 1; a <= 3; a++) {
         player.moveItem(MINE_RUNE, player.backpack);
         sleep(MOVE_DELAY);
         if (!client.findObject(MINE_RUNE, undefined, player.backpack)) stop('Runa není v batohu!');
- 
+
         const used = useRune();
         sleep(500);
         openContainer(SECURE_CHEST);
         player.moveItem(MINE_RUNE, SECURE_CHEST); // runa zpět, teleport mezitím běží
         sleep(MOVE_DELAY);
- 
+
         if (!used) { alarm('Gump runy se neotevřel, zkouším znovu.', 0x35); continue; }
         if (waitUntil(() => dist(pos(), HOME_START) > 30, TELEPORT_TIMEOUT, null, 1000)) {
             sleep(1500);
@@ -451,7 +448,7 @@ function departToMine() {
     }
     stop('Teleport do dolu opakovaně selhal!');
 }
- 
+
 // Při útěku couvá po bodech dolu směrem k místu příletu
 function fleeTick() {
     let t: P;
@@ -465,19 +462,15 @@ function fleeTick() {
     }
     stepToward(t);
 }
- 
+
 function travelHome(flee: boolean) {
     for (let a = 1; a <= 3; a++) {
-        if (countItems(SCROLL_GRAPHIC, SCROLL_HUE, player.backpack) === 0) {
-            if (!flee) stop('Nemám svitek pro travel book!');
-            alarm('Nemám svitek, jen utíkám!');
-        }
-        if (!useTravelBook()) { sleep(2000); continue; }
+        if (!useNbRune()) { sleep(2000); continue; }
         const ok = waitUntil(() => dist(pos(), HOME_START) <= 3, TELEPORT_TIMEOUT,
             flee ? fleeTick : null, flee ? 300 : 1000);
         if (ok) {
             sleep(1000);
-            // travel book může mířit přímo na HOME_START, nebo o pole jižněji
+            // NB runa může mířit přímo na HOME_START, nebo o pole jižněji
             if (at(HOME_MARK)) {
                 for (let i = 0; i < 5 && !at(HOME_START); i++) { tryStep(0, -1); sleep(300); }
             }
@@ -488,7 +481,7 @@ function travelHome(flee: boolean) {
     }
     stop('Teleport domů opakovaně selhal!');
 }
- 
+
 function flee() {
     alarm(`${fleeReason} – utíkám domů!`);
     travelHome(true);
@@ -496,9 +489,9 @@ function flee() {
     storeProducts();
     stop(`Útěk z dolu (${fleeReason}) – postava je doma. Spusť script znovu, až bude bezpečno.`);
 }
- 
+
 // ---------------------------------- DOMA ------------------------------------
- 
+
 function storeProducts() {
     for (const g of PRODUCT_GRAPHICS) {
         for (const it of items(g, undefined, player.backpack)) {
@@ -507,11 +500,11 @@ function storeProducts() {
         }
     }
 }
- 
+
 function homeService() {
     openContainer(SECURE_CHEST);
     storeProducts(); // bod 0
- 
+
     const have = countPickaxes();
     if (have < PICKAXES_WANTED) {
         openContainer(PICKAXE_BAG);
@@ -524,40 +517,34 @@ function homeService() {
     }
     if (countPickaxes() === 0) stop('Došly krumpáče!');
     if (countPickaxes() < PICKAXES_WANTED) alarm('Varování: v pytlíku dochází krumpáče.', 0x35);
- 
-    const sc = countItems(SCROLL_GRAPHIC, SCROLL_HUE, player.backpack);
-    if (sc < SCROLLS_TO_TAKE) {
-        const s = client.findType(SCROLL_GRAPHIC, SCROLL_HUE, SECURE_CHEST);
-        if (!s) stop('V truhle nejsou svitky!');
-        player.moveItem(s, player.backpack, undefined, undefined, undefined, SCROLLS_TO_TAKE - sc);
-        sleep(MOVE_DELAY);
-    }
+
+    if (!client.findType(NB_RUNE_GRAPHIC, NB_RUNE_HUE, player.backpack)) stop('NB runa není v batohu!');
 }
- 
+
 // ---------------------------------- MAIN ------------------------------------
- 
+
 function main() {
     if (WP.length === 0) stop('Nejsou zadané body dolu (MINE_WAYPOINTS).');
     if (!at(HOME_START)) stop('Spusť script na výchozím místě u secure truhly.');
- 
+
     while (true) {
         homeService();
         departToMine();
- 
+
         let finished = false;
         while (true) {
             const r = miningSession();
             if (r === 'FLEE') flee();
- 
+
             // HEAVY, NOPICK i END: vždy nejdřív k peci a přetavit rudu
             if (smeltTrip() === 'FLEE') flee();
- 
+
             if (r === 'END') { finished = true; break; }
             if (r === 'NOPICK') break;
             // HEAVY: po přetavení buď domů, nebo zpět kopat
             if (player.weight > maxW() * HOME_WEIGHT_RATIO) break;
         }
- 
+
         travelHome(false);
         if (finished) {
             openContainer(SECURE_CHEST);
@@ -566,6 +553,5 @@ function main() {
         }
     }
 }
- 
+
 main();
- 
