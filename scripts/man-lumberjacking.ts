@@ -18,7 +18,8 @@ const RETURN_MODE: 'nb' | 'walk'   = 'nb';
 // Body mezi HOME_START a WOOD_WAYPOINTS[0], bez nich samotných.
 // Mezi dvěma po sobě jdoucími body musí jít dojít rovně (i šikmo).  (DOPLNIT)
 const HOME_PATH: { x: number; y: number }[] = [
-    { x: 301, y: 3415 },
+    { x: 300, y: 3408 },
+    { x: 298, y: 3425 },
 ];
 
 // Secure truhla a její obsah  (DOPLNIT serialy)
@@ -35,7 +36,7 @@ const NB_RUNE_HUE     = 0x0B1D;
 const RUNE_GUMP            = 0x2B1;
 const RUNE_RECALL_SWITCH   = 0x0;
 const RUNE_CONTINUE_BUTTON = 1;
-const NB_GUMP          = 0x80A00435;
+const NB_GUMP          = 0x80A003F5;
 const NB_HOME_BUTTON   = 1;
 
 // Domov: místo, odkud se script spouští a odkud jde otevřít truhla.
@@ -45,14 +46,19 @@ const HOME_START = { x: 313, y: 3372 };
 // Mezi dvěma po sobě jdoucími body musí jít dojít rovně (i šikmo).
 // Kolem každého bodu se najdou stromy ve čtverci TREE_SCAN_RANGE.  (DOPLNIT)
 const WOOD_WAYPOINTS = [
-    { x: 292, y: 3436 },
-    { x: 280, y: 3447 },
-    { x: 272, y: 3467 },
-    { x: 266, y: 3459 },
-    { x: 274, y: 3439 },
+    { x: 298, y: 3436 },
+    { x: 284, y: 3436 },
+    { x: 274, y: 3436 },
+    { x: 274, y: 3451 },
+    { x: 274, y: 3465 },
+    { x: 264, y: 3465 },
+    { x: 260, y: 3470 },
+    { x: 261, y: 3481 },
+    { x: 261, y: 3497 },
+    { x: 272, y: 3514 },
 ];
-const TREE_SCAN_RANGE = 6;
-const CHOP_DIST       = 2;   // z jaké vzdálenosti se dá sekat (Phoenix používal 2)
+const TREE_SCAN_RANGE = 4;
+const CHOP_DIST       = 4;   // z jaké vzdálenosti se dá sekat (Phoenix používal 2)
 
 // Grafiky stromů (statiky) – převzato z Phoenix scriptu, případně doplnit
 const TREE_GRAPHICS = [
