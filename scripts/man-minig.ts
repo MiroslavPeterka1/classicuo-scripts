@@ -2,14 +2,13 @@
 //  Automatický mining – ClassicUO Web
 //  Domov (secure truhla) -> runa do dolu -> kopání po bodech -> pec -> NB runa domů
 // ============================================================================
-
 // ------------------------------- KONFIGURACE --------------------------------
 
 // Secure truhla a její obsah
 const SECURE_CHEST = 0x400AE883; // serial secure truhly u domu
 const PICKAXE_BAG  = 0x40030A02; // pytlík s krumpáči (v truhle)
 const PRODUCT_BAG  = 0x403FAA6D; // pytlík na ingoty a kameny (v truhle)
-const MINE_RUNE    = 0x4007277D; // runa do dolu (v truhle)
+const MINE_RUNE    = 0x401D9B32; // runa do dolu (v truhle)
 
 // NB runa pro návrat domů (nosí se v batohu, hledá se podle graphic + hue)
 const NB_RUNE_GRAPHIC = 0x1F14;
@@ -19,33 +18,33 @@ const NB_RUNE_HUE     = 0x0B1D;
 const RUNE_GUMP            = 0x2B1;
 const RUNE_RECALL_SWITCH   = 0x0;
 const RUNE_CONTINUE_BUTTON = 1;
-const NB_GUMP          = 0x80A00435;
+const NB_GUMP          = 0x80A0040A;
 const NB_HOME_BUTTON   = 1;
 
 // Domov: místo, odkud se script spouští a odkud jde otevřít truhla.
-const HOME_START = { x: 1313, y: 2372 };
+const HOME_START = { x: 313, y: 3372 };
 
 // Důl: body, mezi kterými se postava pohybuje (v tomto pořadí).
 // Mezi dvěma po sobě jdoucími body musí jít dojít rovně (i šikmo).
 // Na každém bodě vykope čtverec MINE_RANGE polí na každou stranu.
 const MINE_WAYPOINTS = [
-    { x: 382, y: 1710 },
-    { x: 370, y: 1710 },
-    { x: 371, y: 1717 },
-    { x: 366, y: 1725 },
+    { x: 1382, y: 2710 },
+    { x: 1370, y: 2710 },
+    { x: 1369, y: 2716 },
+    { x: 1366, y: 2725 },
 ];
 // Linie konce dolu (zeď): tato pole se nekopou a postava na ně nevstoupí.
 // Kdyby na ni přesto vstoupila, kopání končí (bod 10).
 const MINE_END_LINE = [
-    { x: 2366, y: 1730 },
-    { x: 2367, y: 1730 },
-    { x: 2368, y: 1730 },
+    { x: 1366, y: 2730 },
+    { x: 1367, y: 2730 },
+    { x: 1368, y: 2730 },
 ];
 const MINE_RANGE = 6;
 
 // Pec: kam si stoupnout. Postava k ní dojde po bodech dolu až k bodu,
 // který je peci nejblíž, a odtud rovně na FORGE_STAND.
-const FORGE_STAND   = { x: 2379, y: 2306 };
+const FORGE_STAND   = { x: 1379, y: 2706 };
 const FORGE_GRAPHIC = 0x0FB1;
 
 // Kopání
