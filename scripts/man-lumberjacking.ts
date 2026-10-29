@@ -55,7 +55,16 @@ const WOOD_WAYPOINTS = [
     { x: 260, y: 3470 },
     { x: 261, y: 3481 },
     { x: 261, y: 3497 },
-    { x: 272, y: 3514 },
+    { x: 261, y: 3505 },
+    { x: 274, y: 3505 },
+    { x: 274, y: 3519 },
+    { x: 286, y: 3519 },
+    { x: 286, y: 3552 },
+    { x: 299, y: 3552 },
+    { x: 299, y: 3562 },
+    { x: 284, y: 3562 },
+    { x: 284, y: 3557 },
+    { x: 276, y: 3557 },
 ];
 const TREE_SCAN_RANGE = 4;
 const CHOP_DIST       = 4;   // z jaké vzdálenosti se dá sekat (Phoenix používal 2)
