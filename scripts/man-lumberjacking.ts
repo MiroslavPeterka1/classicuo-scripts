@@ -2,6 +2,8 @@
 //  Automatický lumberjacking – ClassicUO Web
 //  Domov (secure truhla) -> runa / pěšky do lesa -> sekání po bodech
 //  -> NB runa / pěšky domů
+//  Běží dokola: po projití všech bodů nebo při zaseknutí cestou na další bod
+//  se vrátí k truhle, vyloží dřevo a začne znovu od prvního bodu.
 //  Kostra převzatá z mining scriptu; stromy se hledají automaticky kolem bodů.
 // ============================================================================
 
@@ -128,6 +130,13 @@ const FLEE_IGNORE: number[] = [];
 const MOVE_DELAY       = 700;
 const TELEPORT_TIMEOUT = 60000;
 
+// Opakování
+// Pauza doma po projití všech bodů, než začne další kolo (ms) – stromy mezitím dorůstají.
+const ROUND_PAUSE = 0;
+// Po zaseknutí: true = vytěžené stromy si pamatovat (další kolo jen projde body
+// k místu zaseknutí a seká dál), false = sekat znovu všechno od začátku.
+const KEEP_DONE_AFTER_STUCK = true;
+
 // Ladění: vypíše do logu, co vrací client.getTerrainList() kolem prvního bodu
 const DEBUG_TERRAIN = false;
 
@@ -150,6 +159,8 @@ let resumeWp = 0;               // na kterém bodě se naposledy sekalo
 let arrival: P | null = null;
 const NOT_ON_PATH = -2;
 let pathIdx = NOT_ON_PATH;      // cestou pěšky do lesa: poslední dosažený bod HOME_PATH
+let stuckReason = '';
+let round = 1;
 
 const DIR8: { [k: string]: number } = {
     '0,-1': 0, '1,-1': 1, '1,0': 2, '1,1': 3,
@@ -406,22 +417,28 @@ function chopAround(i: number) {
         left = left.filter(t => !done.has(K(t.x, t.y)));
     }
     if (offWp) {
-        if (!walkTo(WP[i])) stop(`Nedošel jsem zpět na bod č. ${i + 1}!`);
+        if (!walkTo(WP[i])) {
+            stuckReason = `nedošel jsem zpět na bod č. ${i + 1} (${WP[i].x}, ${WP[i].y})`;
+            throw 'STUCK';
+        }
         offWp = false;
     }
 }
 
-// Vrací 'HEAVY' | 'NOTOOL' | 'END' | 'FLEE'
+// Vrací 'HEAVY' | 'NOTOOL' | 'END' | 'FLEE' | 'STUCK'
 function woodSession(): string {
     try {
         for (let i = resumeWp; i < WP.length; i++) {
             resumeWp = i;
-            if (!goToWp(i)) stop(`Nedošel jsem na bod č. ${i + 1} (${WP[i].x}, ${WP[i].y})!`);
+            if (!goToWp(i)) {
+                stuckReason = `nedošel jsem na bod č. ${i + 1} (${WP[i].x}, ${WP[i].y})`;
+                return 'STUCK';
+            }
             chopAround(i);
         }
         return 'END';
     } catch (e) {
-        if (e === 'HEAVY' || e === 'NOTOOL' || e === 'FLEE') return e as string;
+        if (e === 'HEAVY' || e === 'NOTOOL' || e === 'FLEE' || e === 'STUCK') return e as string;
         throw e;
     }
 }
@@ -612,13 +629,28 @@ function main() {
         const r = woodSession();
         if (r === 'FLEE') flee();
 
-        // HEAVY, NOTOOL i END: domů a vyložit
+        // HEAVY, NOTOOL, STUCK i END: domů a vyložit (vyloží homeService na začátku smyčky)
         goHome(false);
+
         if (r === 'END') {
-            openContainer(SECURE_CHEST);
-            storeLogs();
-            stop('Les je vysekaný, hotovo!', 0x44);
+            // všechny body prošlé -> nové kolo od prvního bodu, stromy znovu
+            client.sysMsg(`Kolo ${round} hotovo, všechny body prošlé. Začínám znovu od prvního bodu.`, 0x44);
+            log(`Kolo ${round} hotovo.`);
+            round++;
+            resumeWp = 0;
+            done.clear();
+            if (ROUND_PAUSE > 0) {
+                openContainer(SECURE_CHEST);
+                storeLogs();
+                sleep(ROUND_PAUSE);
+            }
+        } else if (r === 'STUCK') {
+            // zaseknutí cestou -> znovu od prvního bodu
+            alarm(`Zasekl jsem se (${stuckReason}). Začínám znovu od prvního bodu.`, 0x35);
+            resumeWp = 0;
+            if (!KEEP_DONE_AFTER_STUCK) done.clear();
         }
+        // HEAVY / NOTOOL: pokračuje od bodu, kde skončil (resumeWp zůstává)
     }
 }
 
