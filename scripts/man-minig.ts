@@ -1,6 +1,7 @@
 // ============================================================================
 //  Automatický mining – ClassicUO Web
 //  Domov (secure truhla) -> runa do dolu -> kopání po bodech -> pec -> NB runa domů
+//  Po vytěžení dolu i po zaseknutí začíná znovu od prvního bodu.
 // ============================================================================
 // ------------------------------- KONFIGURACE --------------------------------
 
@@ -97,6 +98,11 @@ const FLEE_MOBILE_TYPE  = 'human'; // 'human' = jen lidské postavy, 'any' = i m
 const FLEE_MOBILE_RANGE = 18;      // vzdálenost v polích (18 ≈ celá obrazovka)
 const FLEE_IGNORE: number[] = [];  // serialy, kvůli kterým neutíkat (vlastní pet, kamarád...)
 
+// Opakování
+const RESTART_WAIT_MIN = 0;     // po vytěžení dolu počkat doma X minut, než začne znovu
+const STUCK_RETRY_WAIT = 30000; // po zaseknutí počkat doma (ms) před novým pokusem
+const MAX_STUCK_IN_ROW = 5;     // po tolika zaseknutích za sebou se script zastaví
+
 // Rudy a produkty tavení
 const ORE_GRAPHICS     = [0x19B7, 0x19B8, 0x19B9, 0x19BA];
 const PRODUCT_GRAPHICS = [
@@ -126,6 +132,7 @@ const onLine = () => lineSet.has(K(player.x, player.y));
 let curWp = AT_ARRIVAL;         // na kterém bodě postava stojí
 let resumeWp = 0;               // na kterém bodě se naposledy kopalo
 let arrival: P | null = null;
+let stuckInRow = 0;             // počet zaseknutí za sebou
 
 // index bodu, který je nejblíž peci
 const FORGE_WP = WP.reduce((best, p, i) =>
@@ -166,10 +173,17 @@ function alarm(text: string, hue = 33) {
     } catch (e) { /* zvuk není k dispozici */ }
 }
 
-function stop(text: string, hue = 33) {
+function stop(text: string, hue = 33): never {
     alarm(text, hue);
     exit();
+    throw 'EXIT';
 }
+
+// Zaseknutí: přeruší aktuální činnost, postava se vrátí domů a začne znovu
+function stuck(reason: string): never {
+    throw 'STUCK:' + reason;
+}
+const isStuck = (e: any) => typeof e === 'string' && e.startsWith('STUCK:');
 
 function waitUntil(cond: () => boolean, timeout: number, tick: (() => void) | null, interval: number) {
     const t0 = Date.now();
@@ -183,10 +197,6 @@ function waitUntil(cond: () => boolean, timeout: number, tick: (() => void) | nu
 
 function items(graphic: number, hue: number | undefined, container: any): any[] {
     return client.findAllItemsOfType(graphic, hue, container) || [];
-}
-
-function countItems(graphic: number, hue: number | undefined, container: any) {
-    return items(graphic, hue, container).reduce((s, i) => s + (i.amount || 1), 0);
 }
 
 function countPickaxes() { return items(PICKAXE_GRAPHIC, undefined, player.backpack).length; }
@@ -340,21 +350,21 @@ function mineSquare(i: number) {
     for (const t of left) mineTile(t.x, t.y);
 }
 
-// Vrací 'HEAVY' | 'NOPICK' | 'END' | 'FLEE'
+// Vrací 'HEAVY' | 'NOPICK' | 'END' | 'FLEE' | 'STUCK:<důvod>'
 function miningSession(): string {
     try {
         for (let i = resumeWp; i < WP.length; i++) {
             resumeWp = i;
             if (!goToWp(i)) {
                 if (onLine()) return 'END';
-                stop(`Nedošel jsem na bod dolu č. ${i} (${WP[i].x}, ${WP[i].y})!`);
+                stuck(`nedošel jsem na bod dolu č. ${i + 1} (${WP[i].x}, ${WP[i].y})`);
             }
             if (onLine()) return 'END';
             mineSquare(i);
         }
         return 'END';
     } catch (e) {
-        if (e === 'HEAVY' || e === 'NOPICK' || e === 'FLEE') return e as string;
+        if (e === 'HEAVY' || e === 'NOPICK' || e === 'FLEE' || isStuck(e)) return e as string;
         throw e;
     }
 }
@@ -363,7 +373,7 @@ function miningSession(): string {
 
 function smeltAll() {
     const forge = client.findType(FORGE_GRAPHIC, undefined, 'world', undefined, 3);
-    if (!forge) stop('Pec nenalezena poblíž!');
+    if (!forge) stuck('pec nenalezena poblíž');
     const tries = new Map<number, number>();
     ignoreList.clear();
     for (let i = 0; i < 300; i++) {
@@ -385,19 +395,19 @@ function smeltAll() {
     if (hasOre()) alarm('Část rudy se nepodařilo přetavit.', 0x35);
 }
 
-// Dojde k peci a přetaví všechnu rudu. Vrací 'OK' | 'FLEE'
+// Dojde k peci a přetaví všechnu rudu. Vrací 'OK' | 'FLEE' | 'STUCK:<důvod>'
 function smeltTrip(): string {
     try {
         if (!hasOre()) return 'OK';
         if (curWp !== AT_FORGE) {
-            if (!goToWp(FORGE_WP)) stop('Nedošel jsem k peci (po bodech dolu)!');
-            if (!walkTo(FORGE_STAND)) stop('Nedošel jsem k peci!');
+            if (!goToWp(FORGE_WP)) stuck('nedošel jsem k peci (po bodech dolu)');
+            if (!walkTo(FORGE_STAND)) stuck('nedošel jsem k peci');
             curWp = AT_FORGE;
         }
         smeltAll();
         return 'OK';
     } catch (e) {
-        if (e === 'FLEE') return 'FLEE';
+        if (e === 'FLEE' || isStuck(e)) return e as string;
         throw e;
     }
 }
@@ -424,11 +434,12 @@ function useNbRune(): boolean {
     return true;
 }
 
-function departToMine() {
+// Vrací true, když je postava v dole; false = teleport neproběhl (postava je doma)
+function departToMine(): boolean {
     for (let a = 1; a <= 3; a++) {
         player.moveItem(MINE_RUNE, player.backpack);
         sleep(MOVE_DELAY);
-        if (!client.findObject(MINE_RUNE, undefined, player.backpack)) stop('Runa není v batohu!');
+        if (!client.findObject(MINE_RUNE, undefined, player.backpack)) stop('Runa do dolu není v batohu!');
 
         const used = useRune();
         sleep(500);
@@ -441,11 +452,11 @@ function departToMine() {
             sleep(1500);
             arrival = pos();
             curWp = AT_ARRIVAL;
-            return;
+            return true;
         }
         alarm('Teleport do dolu neproběhl, zkouším znovu.', 0x35);
     }
-    stop('Teleport do dolu opakovaně selhal!');
+    return false;
 }
 
 // Při útěku couvá po bodech dolu směrem k místu příletu
@@ -463,7 +474,11 @@ function fleeTick() {
 }
 
 function travelHome(flee: boolean) {
-    for (let a = 1; a <= 3; a++) {
+    for (let a = 1; a <= 6; a++) {
+        if (a === 4 && !flee) {
+            alarm('Teleport domů opakovaně selhal, chvíli počkám a zkusím znovu.', 0x35);
+            sleep(STUCK_RETRY_WAIT);
+        }
         if (!useNbRune()) { sleep(2000); continue; }
         const ok = waitUntil(() => dist(pos(), HOME_START) <= 3, TELEPORT_TIMEOUT,
             flee ? fleeTick : null, flee ? 300 : 1000);
@@ -481,12 +496,12 @@ function travelHome(flee: boolean) {
     stop('Teleport domů opakovaně selhal!');
 }
 
-function flee() {
+function flee(): never {
     alarm(`${fleeReason} – utíkám domů!`);
     travelHome(true);
     openContainer(SECURE_CHEST);
     storeProducts();
-    stop(`Útěk z dolu (${fleeReason}) – postava je doma. Spusť script znovu, až bude bezpečno.`);
+    return stop(`Útěk z dolu (${fleeReason}) – postava je doma. Spusť script znovu, až bude bezpečno.`);
 }
 
 // ---------------------------------- DOMA ------------------------------------
@@ -520,35 +535,66 @@ function homeService() {
     if (!client.findType(NB_RUNE_GRAPHIC, NB_RUNE_HUE, player.backpack)) stop('NB runa není v batohu!');
 }
 
+// Nové kolo od prvního bodu
+function resetMine() {
+    done.clear();
+    resumeWp = 0;
+    curWp = AT_ARRIVAL;
+}
+
+function registerStuck(reason: string) {
+    stuckInRow++;
+    alarm(`Zaseknutí: ${reason} (${stuckInRow}/${MAX_STUCK_IN_ROW}) – začínám znovu od začátku.`, 0x35);
+    if (stuckInRow >= MAX_STUCK_IN_ROW) stop('Script se opakovaně zasekává, zastavuji.');
+}
+
 // ---------------------------------- MAIN ------------------------------------
 
 function main() {
     if (WP.length === 0) stop('Nejsou zadané body dolu (MINE_WAYPOINTS).');
     if (!at(HOME_START)) stop('Spusť script na výchozím místě u secure truhly.');
 
+    let round = 1;
     while (true) {
         homeService();
-        departToMine();
+        if (!departToMine()) {
+            registerStuck('teleport do dolu neproběhl');
+            sleep(STUCK_RETRY_WAIT);
+            continue;
+        }
 
-        let finished = false;
+        let outcome = 'HOME'; // 'HOME' | 'FINISHED' | 'STUCK'
+        let stuckReason = '';
         while (true) {
             const r = miningSession();
             if (r === 'FLEE') flee();
+            if (isStuck(r)) { outcome = 'STUCK'; stuckReason = r.slice(6); break; }
 
             // HEAVY, NOPICK i END: vždy nejdřív k peci a přetavit rudu
-            if (smeltTrip() === 'FLEE') flee();
+            const s = smeltTrip();
+            if (s === 'FLEE') flee();
+            if (isStuck(s)) { outcome = 'STUCK'; stuckReason = s.slice(6); break; }
 
-            if (r === 'END') { finished = true; break; }
+            stuckInRow = 0; // kolo kopání a tavení proběhlo v pořádku
+            if (r === 'END') { outcome = 'FINISHED'; break; }
             if (r === 'NOPICK') break;
             // HEAVY: po přetavení buď domů, nebo zpět kopat
             if (player.weight > maxW() * HOME_WEIGHT_RATIO) break;
         }
 
         travelHome(false);
-        if (finished) {
+
+        if (outcome === 'FINISHED') {
             openContainer(SECURE_CHEST);
             storeProducts();
-            stop('Důl je vytěžený, hotovo!', 0x44);
+            alarm(`Kolo ${round} hotovo, důl je vytěžený. Začínám znovu od začátku.`, 0x44);
+            round++;
+            resetMine();
+            if (RESTART_WAIT_MIN > 0) sleep(RESTART_WAIT_MIN * 60000);
+        } else if (outcome === 'STUCK') {
+            registerStuck(stuckReason);
+            resetMine();
+            sleep(STUCK_RETRY_WAIT);
         }
     }
 }
